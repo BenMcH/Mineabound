@@ -1,4 +1,4 @@
-package com.tycoon177.terraria.clone.game.utils;
+package com.tycoon177.mineabound.game.utils;
 
 import java.util.Random;
 

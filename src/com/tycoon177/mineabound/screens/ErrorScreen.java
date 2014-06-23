@@ -1,4 +1,4 @@
-package com.tycoon177.terraria.clone.screens;
+package com.tycoon177.mineabound.screens;
 
 import java.awt.BorderLayout;
 import java.awt.Graphics;

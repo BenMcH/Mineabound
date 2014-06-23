@@ -1,4 +1,4 @@
-package com.tycoon177.terraria.clone.game.components;
+package com.tycoon177.mineabound.game.components;
 
 import java.util.HashMap;
 import java.util.Map;

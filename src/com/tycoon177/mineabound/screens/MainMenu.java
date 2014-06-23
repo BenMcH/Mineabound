@@ -1,4 +1,4 @@
-package com.tycoon177.terraria.clone.screens;
+package com.tycoon177.mineabound.screens;
 
 import java.awt.Graphics;
 import java.awt.GridLayout;
@@ -12,43 +12,43 @@ import com.tycoon177.engine.Game;
 import com.tycoon177.engine.gui.Button;
 import com.tycoon177.engine.gui.Menu;
 
-public class OptionsMenu extends Menu {
+public class MainMenu extends Menu {
 	
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = -7668646636750807897L;
+	private static final long serialVersionUID = -3059702383372995751L;
 	
-	public OptionsMenu(Game game) {
+	public MainMenu(Game game) {
 		super(game);
 	}
 	
-	@SuppressWarnings("serial")
+	@SuppressWarnings({ "serial"})
 	@Override
 	public void onCreate() {
 		int rows = 7;
 		this.setBorder(new EmptyBorder(20, 20, 20, 20));
 		this.setLayout(new GridLayout(rows, 1, 50, 20));
-		final Button play = new Button(0, 0, "OPTION"), options = new Button(0, 0, "OPTION"), exit = new Button(0, 0, "FUCK OFF AND GO BACK");
+		final Button play = new Button(0, 0, "Play"), options = new Button(0, 0, "Options"), exit = new Button(0, 0, "Quit");
 		for (int i = 0; i < (rows - 3) / 2; i++)
 			this.add(new JComponent() {
 			});
 		play.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				
+				getGame().setScreen(new GameStart(getGame()));
 			}
 		});
 		options.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				getGame().setScreen(new ErrorScreen(getGame(), "Blah Blah Blah"));
+				getGame().setScreen(new OptionsMenu(getGame()));
 			}
 		});
 		exit.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				getGame().setScreen(new MainMenu(getGame()));
+				System.exit(0);
 			}
 		});
 		this.add(play);
@@ -63,7 +63,10 @@ public class OptionsMenu extends Menu {
 	
 	@Override
 	public void onTick(double updateTime) {
-		
+	}
+	
+	public Game getGame() {
+		return super.getGame();
 	}
 	
 }

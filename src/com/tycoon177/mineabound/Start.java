@@ -1,8 +1,8 @@
-package com.tycoon177.terraria.clone;
+package com.tycoon177.mineabound;
 
 import com.tycoon177.engine.Game;
 import com.tycoon177.engine.utils.images.SpriteSheet;
-import com.tycoon177.terraria.clone.screens.MainMenu;
+import com.tycoon177.mineabound.screens.MainMenu;
 
 public class Start {
 	private static Game game;
