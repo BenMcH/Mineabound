@@ -29,7 +29,7 @@ public class World extends Screen {
 	
 	private KeyboardListener keys;
 	private MouseListener mouse;
-	private PlayerInfo p = new PlayerInfo(this);
+	private PlayerInfo p;
 	public static double offsetX, offsetY;
 	private static int visible = 4;
 	private Block[][] world;
@@ -39,7 +39,7 @@ public class World extends Screen {
 	private double dy = -5;
 	private final static int LEFT = 0, RIGHT = 1;
 	private Hotbar hotbar;
-
+	
 	private int lastDirection = RIGHT;
 	
 	public World(Game game) {
@@ -64,6 +64,7 @@ public class World extends Screen {
 		}
 		setOffsetX(0);
 		setOffsetY(0);
+		p = new PlayerInfo(this);
 		p.x = getWidth() / 2 - PlayerInfo.width / 2;
 		p.y = getHeight() / 2 - PlayerInfo.height / 2;
 		if (isPlayerFeetCollided())
@@ -225,8 +226,17 @@ public class World extends Screen {
 				keys.setKeyPressed(KeyEvent.VK_ESCAPE, false);
 			}
 		}
+		if (keys.isKeyPressed(KeyEvent.VK_ALT)) 
+			if (keys.isKeyPressed(KeyEvent.VK_Q)){
+				stopGame();
+				getGame().setScreen(new MainMenu(getGame()));
+			}
 	}
 	
+	private void stopGame() {
+		this.stopTime();
+	}
+
 	private void onMouseClick() {
 		Point p = mouse.getMouseLocation();
 		Chunk a = getChunkFromCoordinatesOnScreen(p.x);
