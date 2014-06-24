@@ -14,6 +14,7 @@ import com.tycoon177.engine.Game;
 import com.tycoon177.engine.gui.Screen;
 import com.tycoon177.engine.utils.KeyboardListener;
 import com.tycoon177.engine.utils.MouseListener;
+import com.tycoon177.mineabound.GraphicComponents.Hotbar;
 import com.tycoon177.mineabound.data.player.PlayerInfo;
 import com.tycoon177.mineabound.data.world.Chunk;
 import com.tycoon177.mineabound.game.components.Block;
@@ -36,6 +37,10 @@ public class World extends Screen {
 	private boolean inventory, jumping = false;
 	private Image screen = null;
 	private double dy = -5;
+	private final static int LEFT = 0, RIGHT = 1;
+	private Hotbar hotbar;
+
+	private int lastDirection = RIGHT;
 	
 	public World(Game game) {
 		super(game);
@@ -45,6 +50,7 @@ public class World extends Screen {
 		this.setFocusable(true);
 		this.addMouseListener((mouse = new MouseListener()));
 		getGame().getFrame().addKeyListener((keys = new KeyboardListener()));
+		this.addMouseWheelListener(mouse);
 		this.setTickTime(60);
 		visibleChunks.add(new Chunk());
 		for (int i = 0; i < visible - 1; i++) {
@@ -66,6 +72,10 @@ public class World extends Screen {
 		else
 			while (!isPlayerFeetCollided())
 				setOffsetY(getOffsetY() - 1);
+		for (int i = 0; i < 4; i++)
+			p.setHotbarPlace(i, BlockType.getBlockTypeFromId(i));
+		p.setHotbarPlace(4, BlockType.BEDROCK);
+		hotbar = new Hotbar(p);
 	}
 	
 	@Override
@@ -83,11 +93,16 @@ public class World extends Screen {
 		Graphics g2 = screen.getGraphics();
 		renderSky(g2);
 		renderArea(g2);
+		renderHotbar(g2);
 		renderPlayer(g2);
 		if (inventory)
 			drawInventory(g2);
 		else if (isPaused()) drawOnPause(g2);
 		g.drawImage(screen, 0, 0, null);
+	}
+	
+	private void renderHotbar(Graphics g2) {
+		hotbar.onDraw(g2);
 	}
 	
 	private void renderSky(Graphics g2) {
@@ -112,15 +127,21 @@ public class World extends Screen {
 	
 	public void renderPlayer(Graphics g2) {
 		g2.setColor(Color.red);
-		g2.drawImage(p.modelStill.getSprite(),(int) p.x, (int) p.y, PlayerInfo.width, PlayerInfo.height, null);
-		
+		if (lastDirection == RIGHT)
+			g2.drawImage(p.modelStill.getSprite(), (int) p.x, (int) p.y, PlayerInfo.width,
+					PlayerInfo.height, null);
+		else
+			g2.drawImage(p.modelStill.getSprite(), (int) p.x + p.width, (int) p.y,
+					-PlayerInfo.width, PlayerInfo.height, null);
 	}
 	
 	@Override
 	public void onTick(double updateTime) {
 		inputHandler();
-		updateChunks();
-		updateCamera();
+		if (!isPaused()) {
+			updateChunks();
+			updateCamera();
+		}
 	}
 	
 	private void updateChunks() {
@@ -165,6 +186,7 @@ public class World extends Screen {
 			// Normal Gameplay
 			if (keys.isKeyPressed(KeyEvent.VK_A)) {
 				setOffsetX(getOffsetX() - 2);
+				lastDirection = LEFT;
 				while (isPlayerLeftCollided())
 					setOffsetX(getOffsetX() + 1);
 				setOffsetX(getOffsetX() - 2);
@@ -172,6 +194,7 @@ public class World extends Screen {
 			}
 			if (keys.isKeyPressed(KeyEvent.VK_D)) {
 				setOffsetX(getOffsetX() + 2);
+				lastDirection = RIGHT;
 				while (isPlayerRightCollided())
 					setOffsetX(getOffsetX() - 1);
 				setOffsetX(getOffsetX() + 1);
@@ -180,16 +203,27 @@ public class World extends Screen {
 			if (mouse.isMouseClicked()) {
 				onMouseClick();
 			}
-			if (keys.isKeyPressed(KeyEvent.VK_E)) inventory = true;
-			if (keys.isKeyPressed(KeyEvent.VK_ESCAPE)) setPaused(true);
+			if (keys.isKeyPressed(KeyEvent.VK_E)) {
+				inventory = true;
+				keys.setKeyPressed(KeyEvent.VK_E, false);
+			}
+			if (keys.isKeyPressed(KeyEvent.VK_ESCAPE)) {
+				setPaused(true);
+				keys.setKeyPressed(KeyEvent.VK_ESCAPE, false);
+			}
+			p.setHotbarPlace(p.getHotbarPlace() + mouse.getRotation());
 		} else if (!paused) {
 			// in the inventory
-			if (keys.isKeyPressed(KeyEvent.VK_ESCAPE)) {
+			if (keys.isKeyPressed(KeyEvent.VK_E)) {
 				inventory = false;
+				keys.setKeyPressed(KeyEvent.VK_E, false);
 			}
 		} else if (!inventory) {
 			// paused
-			if (keys.isKeyPressed(KeyEvent.VK_ESCAPE)) this.setPaused(!paused);
+			if (keys.isKeyPressed(KeyEvent.VK_ESCAPE)) {
+				this.setPaused(!paused);
+				keys.setKeyPressed(KeyEvent.VK_ESCAPE, false);
+			}
 		}
 	}
 	
@@ -199,7 +233,10 @@ public class World extends Screen {
 		if (a == null) return;
 		int x = (int) Math.floor((p.x - a.getX()) / Block.SIZE);
 		int y = (int) Math.floor((p.y - a.getY()) / Block.SIZE);
-		BlockType b = mouse.getMouseBtn() == MouseListener.LEFT ? BlockType.STONE : BlockType.AIR;
+		boolean airSelected = this.p.getSelectedBlockType() == BlockType.AIR;
+		if (mouse.getMouseBtn() != MouseListener.LEFT && airSelected) return;
+		BlockType b = mouse.getMouseBtn() == MouseListener.LEFT ? BlockType.AIR : this.p
+				.getSelectedBlockType();
 		mouse.setMouseClicked(false);
 		if (x < 0 || y < 0 || x >= Chunk.WIDTH || y >= Chunk.HEIGHT) return;
 		if (a != null) a.setBlock(b, x, y);
