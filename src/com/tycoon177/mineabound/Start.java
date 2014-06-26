@@ -9,7 +9,6 @@ public class Start {
 	private static SpriteSheet spriteSheet;
 	
 	public static void main(String[] args) {
-		
 		game = new Game("Mineabound", 800, 600);
 		game.setScreen(new MainMenu(game));
 		game.showFrame();
@@ -21,5 +20,5 @@ public class Start {
 	
 	public static SpriteSheet getSpriteSheet() {
 		return spriteSheet;
-	}	
+	}
 }

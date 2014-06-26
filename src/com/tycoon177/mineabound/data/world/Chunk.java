@@ -4,6 +4,7 @@ import java.awt.Graphics;
 import java.awt.Rectangle;
 
 import com.tycoon177.engine.gui.GUIComponent;
+import com.tycoon177.mineabound.data.exceptions.InvalidChunkDataException;
 import com.tycoon177.mineabound.game.components.Block;
 import com.tycoon177.mineabound.game.components.BlockType;
 import com.tycoon177.mineabound.game.utils.RandomUtils;
@@ -17,6 +18,7 @@ public class Chunk extends GUIComponent {
 	private static final int MULT = 4;
 	private static final int MIN_HEIGHT = HEIGHT / 4;
 	private double x, y;
+	private int region, offsetInRegion;
 	
 	public double getX() {
 		return x;
@@ -35,11 +37,21 @@ public class Chunk extends GUIComponent {
 	}
 	
 	public Chunk() {
-		this(DEFAULT_HEIGHT, RIGHT);
+		this(DEFAULT_HEIGHT, RIGHT, 0, 0);
 	}
 	
-	public Chunk(int height, int dir) {
+	public Chunk(int height, int dir, int region, int offset) {
 		generateChunk(HEIGHT - height, dir);
+		this.region = 0;
+		this.offsetInRegion = 0;
+	}
+	
+	public Chunk(int[][] blockTypes) throws InvalidChunkDataException {
+		if (blockTypes.length != chunk.length || blockTypes[0].length != chunk[0].length)
+			throw new InvalidChunkDataException("Chunk data was not of correct length");
+		for (int i = 0; i < blockTypes.length; i++)
+			for (int j = 0; j < blockTypes[0].length; j++)
+				chunk[i][j] = new Block(BlockType.getBlockTypeFromId(blockTypes[i][j]));
 	}
 	
 	private void generateChunk(int n, int dir) {
@@ -93,8 +105,8 @@ public class Chunk extends GUIComponent {
 						(int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE, Block.SIZE,
 						null);
 				if (chunk[i][j].getType() != BlockType.AIR) {
-				//	g.drawRect((int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE,
-					//		Block.SIZE);
+					// g.drawRect((int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE,
+					// Block.SIZE);
 				}
 			}
 		}
@@ -104,29 +116,46 @@ public class Chunk extends GUIComponent {
 		Rectangle block = new Rectangle(0, 0, Block.SIZE, Block.SIZE);
 		for (int i = 0; i < chunk.length; i++) {
 			for (int j = 0; j < chunk[0].length; j++) {
-				if(chunk[i][j].getType() == BlockType.AIR) continue;
+				if (chunk[i][j].getType() == BlockType.AIR) continue;
 				block.x = (int) x + j * Block.SIZE;
 				block.y = (int) y + i * Block.SIZE;
-				if (block.intersects(r)){
-					return true;
-				}
+				if (block.intersects(r)) { return true; }
 			}
 		}
 		return false;
 	}
 	
-	public double getYOfCollision(Rectangle r){
+	public double getYOfCollision(Rectangle r) {
 		Rectangle block = new Rectangle(0, 0, Block.SIZE, Block.SIZE);
 		for (int i = 0; i < chunk.length; i++) {
 			for (int j = 0; j < chunk[0].length; j++) {
-				if(chunk[i][j].getType() == BlockType.AIR) continue;
+				if (chunk[i][j].getType() == BlockType.AIR) continue;
 				block.x = (int) x + j * Block.SIZE;
 				block.y = (int) y + i * Block.SIZE;
-				if (block.intersects(r)){
-					return block.getY();
-				}
+				if (block.intersects(r)) { return block.getY(); }
 			}
 		}
 		return -1;
+	}
+	
+	public BlockType getBlockType(int x, int y) {
+		if (x < 0 || x >= WIDTH) return null;
+		if (y < 0 || y >= HEIGHT) return null;
+		return chunk[y][x].getType();
+	}
+	
+	public boolean collidesWithBlock(int x, int y, Rectangle r) {
+		if (x < 0 || x >= WIDTH) return false;
+		if (y < 0 || y >= HEIGHT) return false;
+		return new Rectangle((int) this.x + x * Block.SIZE, (int) this.y + y * Block.SIZE,
+				Block.SIZE, Block.SIZE).intersects(r);
+	}
+	
+	public int getRegion() {
+		return region;
+	}
+	
+	public int getOffsetInRegion() {
+		return offsetInRegion;
 	}
 }

@@ -55,7 +55,7 @@ public class World extends Screen {
 		visibleChunks.add(new Chunk());
 		for (int i = 0; i < visible - 1; i++) {
 			visibleChunks.add(new Chunk(Chunk.HEIGHT
-					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT));
+					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT,0,0));
 		}
 		for (int i = 0; i < world.length; i++) {
 			for (int j = 0; j < world[0].length; j++) {
@@ -132,7 +132,7 @@ public class World extends Screen {
 			g2.drawImage(p.modelStill.getSprite(), (int) p.x, (int) p.y, PlayerInfo.width,
 					PlayerInfo.height, null);
 		else
-			g2.drawImage(p.modelStill.getSprite(), (int) p.x + p.width, (int) p.y,
+			g2.drawImage(p.modelStill.getSprite(), (int) p.x + PlayerInfo.width, (int) p.y,
 					-PlayerInfo.width, PlayerInfo.height, null);
 	}
 	
@@ -149,12 +149,12 @@ public class World extends Screen {
 		if (Chunk.WIDTH * Block.SIZE - offsetX < 0) {
 			visibleChunks.remove(0);
 			visibleChunks.add(new Chunk(Chunk.HEIGHT
-					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT));
+					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT,0,0));
 			setOffsetX(getOffsetX() - Block.SIZE * Chunk.WIDTH);
 		} else if (Chunk.WIDTH * Block.SIZE - offsetX > (Block.SIZE * Chunk.WIDTH)) {
 			visibleChunks.remove(visibleChunks.size() - 1);
 			visibleChunks.add(0, new Chunk(Chunk.HEIGHT - visibleChunks.get(0).getLeftHeight(),
-					Chunk.LEFT));
+					Chunk.LEFT,0,0));
 			setOffsetX(getOffsetX() + Block.SIZE * Chunk.WIDTH);
 		}
 		
@@ -226,17 +226,16 @@ public class World extends Screen {
 				keys.setKeyPressed(KeyEvent.VK_ESCAPE, false);
 			}
 		}
-		if (keys.isKeyPressed(KeyEvent.VK_ALT)) 
-			if (keys.isKeyPressed(KeyEvent.VK_Q)){
-				stopGame();
-				getGame().setScreen(new MainMenu(getGame()));
-			}
+		if (keys.isKeyPressed(KeyEvent.VK_ALT)) if (keys.isKeyPressed(KeyEvent.VK_Q)) {
+			stopGame();
+			getGame().setScreen(new MainMenu(getGame()));
+		}
 	}
 	
 	private void stopGame() {
 		this.stopTime();
 	}
-
+	
 	private void onMouseClick() {
 		Point p = mouse.getMouseLocation();
 		Chunk a = getChunkFromCoordinatesOnScreen(p.x);
@@ -249,6 +248,9 @@ public class World extends Screen {
 				.getSelectedBlockType();
 		mouse.setMouseClicked(false);
 		if (x < 0 || y < 0 || x >= Chunk.WIDTH || y >= Chunk.HEIGHT) return;
+		for(Chunk c : visibleChunks){
+			if(c.collidesWithBlock(x, y, this.p.getBounds())) return;
+		}
 		if (a != null) a.setBlock(b, x, y);
 	}
 	
@@ -320,6 +322,13 @@ public class World extends Screen {
 		Rectangle player = p.getRightBounds();
 		for (Chunk c : visibleChunks)
 			if (c.isCollided(player)) return true;
+		return false;
+	}
+	
+	public boolean isPlayerCollided() {
+		Rectangle player = p.getBounds();
+		for(Chunk c : visibleChunks)
+			if(c.isCollided(player)) return true;
 		return false;
 	}
 	
