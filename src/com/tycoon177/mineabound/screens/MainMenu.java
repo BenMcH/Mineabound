@@ -26,6 +26,7 @@ public class MainMenu extends Menu {
 	@SuppressWarnings({ "serial"})
 	@Override
 	public void onCreate() {
+		super.onCreate();
 		int rows = 7;
 		this.setBorder(new EmptyBorder(20, 20, 20, 20));
 		this.setLayout(new GridLayout(rows, 1, 50, 20));

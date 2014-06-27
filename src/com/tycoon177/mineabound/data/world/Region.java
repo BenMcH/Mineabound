@@ -2,10 +2,10 @@ package com.tycoon177.mineabound.data.world;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Scanner;
 
-import com.tycoon177.mineabound.data.IO.WorldSaves;
 import com.tycoon177.mineabound.data.exceptions.InvalidChunkDataException;
 import com.tycoon177.mineabound.game.components.Block;
 
@@ -18,20 +18,26 @@ public class Region implements Runnable {
 	public int getLastChunkGotten() {
 		return lastChunkGotten;
 	}
-
+	
 	public int getRegionNum() {
 		return regionNum;
 	}
 	
 	public Region(String saveName, int regionNum) {
 		region = new Chunk[512];
-		regionFile = WorldSaves.getSaveFile(saveName, regionNum);
+		regionFile = getSaveFile(saveName, regionNum);
 		this.regionNum = regionNum;
 	}
 	
+	private File getSaveFile(String saveName, int regionNum2) {
+		return new File(System.getenv("appdata") + File.separator + ".mineabound" + File.separator
+				+ "saves" + File.separator + saveName + File.separator + "regions" + File.separator + "r-"
+				+ regionNum2 + ".dat");
+	}
+	
 	public Chunk getChunk(int i) {
-		lastChunkGotten = i % 512;
-		return region[i % region.length];
+		lastChunkGotten = i;
+		return region[i];
 	}
 	
 	@Override
@@ -44,7 +50,7 @@ public class Region implements Runnable {
 					for (int j = 0; j < Chunk.WIDTH; j++)
 						blocks[i][j] = s.nextInt();
 				try {
-					region[k] = new Chunk(blocks);
+					region[k] = new Chunk(blocks, getRegionNum(), k);
 				} catch (InvalidChunkDataException e) {
 					e.printStackTrace();
 				}
@@ -55,8 +61,8 @@ public class Region implements Runnable {
 		}
 	}
 	
-	public void generateRegion(final int height, final int direction) {
-		new Thread(new Runnable() {
+	public Thread generationThread(final int height, final int direction) {
+		return new Thread(new Runnable() {
 			@Override
 			public void run() {
 				int a = height;
@@ -64,27 +70,36 @@ public class Region implements Runnable {
 				for (int i = 0; i < region.length; i++) {
 					region[i] = new Chunk(a, dir, regionNum, i);
 					if (dir == Chunk.RIGHT)
-						a = region[i].getRightHeight();
+						a = Chunk.HEIGHT - region[i].getRightHeight();
 					else
-						a = region[i].getLeftHeight();
+						a = Chunk.HEIGHT - region[i].getLeftHeight();
 				}
 			}
-		}).start();
+		});
 	}
 	
 	public void saveRegion() {
+		regionFile.getParentFile().mkdirs();
+		try {
+			regionFile.createNewFile();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		try (PrintWriter out = new PrintWriter(regionFile)) {
+			regionFile.mkdirs();
+			regionFile.createNewFile();
 			for (Chunk a : region) {
 				Block[][] blocks = a.getChunk();
 				for (Block[] col : blocks) {
 					for (Block b : col) {
-						out.println(b.getType().getBlockID() + " ");
+						out.print(b.getType().getBlockID() + " ");
 					}
+					out.println();
 					out.flush();
 				}
 			}
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		

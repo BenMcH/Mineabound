@@ -13,12 +13,12 @@ public class Chunk extends GUIComponent {
 	public final static int WIDTH = 12, HEIGHT = 256;
 	public final static int LEFT = -1, RIGHT = 1;
 	private final Block[][] chunk = new Block[HEIGHT][WIDTH];
-	private final static int DEFAULT_HEIGHT = (int) Math.ceil(HEIGHT / 1.5);
+	public final static int DEFAULT_HEIGHT = (int) Math.ceil(HEIGHT / 1.5);
 	private static final int MAX_CHANGE = 1;
 	private static final int MULT = 4;
 	private static final int MIN_HEIGHT = HEIGHT / 4;
 	private double x, y;
-	private int region, offsetInRegion;
+	private final int region, offsetInRegion;
 	
 	public double getX() {
 		return x;
@@ -42,11 +42,13 @@ public class Chunk extends GUIComponent {
 	
 	public Chunk(int height, int dir, int region, int offset) {
 		generateChunk(HEIGHT - height, dir);
-		this.region = 0;
-		this.offsetInRegion = 0;
+		this.region = region;
+		this.offsetInRegion = offset;
 	}
 	
-	public Chunk(int[][] blockTypes) throws InvalidChunkDataException {
+	public Chunk(int[][] blockTypes, int region, int offset) throws InvalidChunkDataException {
+		this.region = region;
+		this.offsetInRegion = offset;
 		if (blockTypes.length != chunk.length || blockTypes[0].length != chunk[0].length)
 			throw new InvalidChunkDataException("Chunk data was not of correct length");
 		for (int i = 0; i < blockTypes.length; i++)
@@ -104,6 +106,8 @@ public class Chunk extends GUIComponent {
 				g.drawImage(chunk[i][j].getType().getSprite().getSprite(),
 						(int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE, Block.SIZE,
 						null);
+				if(i == 0)
+					g.fillRect((int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE, Block.SIZE);
 				if (chunk[i][j].getType() != BlockType.AIR) {
 					// g.drawRect((int) x + j * Block.SIZE, (int) y + i * Block.SIZE, Block.SIZE,
 					// Block.SIZE);
@@ -123,19 +127,6 @@ public class Chunk extends GUIComponent {
 			}
 		}
 		return false;
-	}
-	
-	public double getYOfCollision(Rectangle r) {
-		Rectangle block = new Rectangle(0, 0, Block.SIZE, Block.SIZE);
-		for (int i = 0; i < chunk.length; i++) {
-			for (int j = 0; j < chunk[0].length; j++) {
-				if (chunk[i][j].getType() == BlockType.AIR) continue;
-				block.x = (int) x + j * Block.SIZE;
-				block.y = (int) y + i * Block.SIZE;
-				if (block.intersects(r)) { return block.getY(); }
-			}
-		}
-		return -1;
 	}
 	
 	public BlockType getBlockType(int x, int y) {
@@ -158,4 +149,5 @@ public class Chunk extends GUIComponent {
 	public int getOffsetInRegion() {
 		return offsetInRegion;
 	}
+	
 }

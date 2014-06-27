@@ -37,14 +37,14 @@ public class GameStart extends Screen {
 		play.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				getGame().setScreen(new World(getGame()));
+				getGame().setScreen(new WorldNamingMenu(getGame()));
 				// Get into game
 			}
 		});
 		load.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				getGame().setScreen(new OptionsMenu(getGame()));
+				getGame().setScreen(new LoadScreen(getGame()));
 				// TODO add load menu.
 			}
 		});

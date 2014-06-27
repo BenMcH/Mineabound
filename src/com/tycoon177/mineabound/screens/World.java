@@ -8,7 +8,12 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Scanner;
+
+import javax.swing.JOptionPane;
 
 import com.tycoon177.engine.Game;
 import com.tycoon177.engine.gui.Screen;
@@ -17,9 +22,9 @@ import com.tycoon177.engine.utils.MouseListener;
 import com.tycoon177.mineabound.GraphicComponents.Hotbar;
 import com.tycoon177.mineabound.data.player.PlayerInfo;
 import com.tycoon177.mineabound.data.world.Chunk;
+import com.tycoon177.mineabound.data.world.Region;
 import com.tycoon177.mineabound.game.components.Block;
 import com.tycoon177.mineabound.game.components.BlockType;
-import com.tycoon177.mineabound.game.utils.RandomUtils;
 
 public class World extends Screen {
 	/**
@@ -32,51 +37,108 @@ public class World extends Screen {
 	private PlayerInfo p;
 	public static double offsetX, offsetY;
 	private static int visible = 4;
-	private Block[][] world;
 	private ArrayList<Chunk> visibleChunks = new ArrayList<>(visible);
 	private boolean inventory, jumping = false;
 	private Image screen = null;
 	private double dy = -5;
 	private final static int LEFT = 0, RIGHT = 1;
 	private Hotbar hotbar;
-	
+	private Region mainRegion, secondRegion;
+	private File saveDir;
 	private int lastDirection = RIGHT;
+	private final String saveName;
 	
-	public World(Game game) {
+	public World(Game game, String saveName) {
 		super(game);
+		this.saveName = saveName;
 		inventory = false;
-		world = new Block[Chunk.HEIGHT][Chunk.WIDTH * visible];
 		this.setMaxFps(60);
 		this.setFocusable(true);
 		this.addMouseListener((mouse = new MouseListener()));
 		getGame().getFrame().addKeyListener((keys = new KeyboardListener()));
 		this.addMouseWheelListener(mouse);
 		this.setTickTime(60);
-		visibleChunks.add(new Chunk());
-		for (int i = 0; i < visible - 1; i++) {
-			visibleChunks.add(new Chunk(Chunk.HEIGHT
-					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT,0,0));
-		}
-		for (int i = 0; i < world.length; i++) {
-			for (int j = 0; j < world[0].length; j++) {
-				world[i][j] = new Block(BlockType.AIR);
-			}
-		}
-		setOffsetX(0);
-		setOffsetY(0);
+		saveDir = getSaveFile(saveName);
 		p = new PlayerInfo(this);
 		p.x = getWidth() / 2 - PlayerInfo.width / 2;
 		p.y = getHeight() / 2 - PlayerInfo.height / 2;
+		if (!saveDir.exists())
+			firstSetup(saveName);
+		else
+			loadExistingSetup(saveName);
+		
+		for (int i = 0; i < 4; i++)
+			p.setHotbarPlace(i, BlockType.getBlockTypeFromId(i));
+		p.setHotbarPlace(4, BlockType.BEDROCK);
+		hotbar = new Hotbar(p);
+	}
+	
+	public void firstSetup(String saveName) {
+		this.mainRegion = new Region(saveName, 0);
+		Thread gen = mainRegion.generationThread(Chunk.DEFAULT_HEIGHT, Chunk.RIGHT);
+		gen.start();
+		try {
+			gen.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		for (int i = 0; i < visible; i++) {
+			visibleChunks.add(mainRegion.getChunk(250 + i));
+		}
+		setOffsetX(0);
+		setOffsetY(0);
 		if (isPlayerFeetCollided())
 			while (isPlayerFeetCollided())
 				setOffsetY(getOffsetY() + 1);
 		else
 			while (!isPlayerFeetCollided())
 				setOffsetY(getOffsetY() - 1);
-		for (int i = 0; i < 4; i++)
-			p.setHotbarPlace(i, BlockType.getBlockTypeFromId(i));
-		p.setHotbarPlace(4, BlockType.BEDROCK);
-		hotbar = new Hotbar(p);
+	}
+	
+	public void loadExistingSetup(String saveName) {
+		File f = getSaveDataFile(saveName);
+		if (!f.exists()) {
+			getGame().setScreen(
+					new ErrorScreen(getGame(), "Error! No save file found in the save directory!"));
+			stopTime();
+			return;
+		}
+		int regionNum, chunkNum;
+		try (Scanner s = new Scanner(f)) {
+			regionNum = s.nextInt();
+			chunkNum = s.nextInt();
+			setOffsetX(s.nextDouble());
+			setOffsetY(s.nextDouble());
+		} catch (IOException e) {
+			getGame().setScreen(new ErrorScreen(getGame(), "Failed at reading in save data!"));
+			stopTime();
+			return;
+		}
+		mainRegion = new Region(saveName, regionNum);
+		Thread regionThread = new Thread(mainRegion);
+		regionThread.start();
+		try {
+			regionThread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		for (int i = chunkNum; i < chunkNum + visible; i++) {
+			visibleChunks.add(mainRegion.getChunk(i));
+		}
+	}
+	
+	private final File getSaveDataFile(String saveName) {
+		return new File(getSaveFile(saveName) + File.separator + "save.dat");
+	}
+	
+	public static File getSaveFile(String name) {
+		return new File(getSaveDir() + File.separator + name);
+	}
+	
+	public static File getSaveDir(){
+		return new File(System.getenv("appdata") + File.separator + ".mineabound" + File.separator
+				+ "saves" + File.separator);
 	}
 	
 	@Override
@@ -119,9 +181,7 @@ public class World extends Screen {
 	
 	public void renderArea(Graphics g2) {
 		Graphics2D g = (Graphics2D) g2;
-		for (int i = 0; i < visibleChunks.size(); i++)
-			RandomUtils.cpyArray(visibleChunks.get(i).getChunk(), world, 0, Chunk.WIDTH * i);
-		for (int i = 0; i < visible; i++) {
+		for (int i = 0; i < visibleChunks.size(); i++) {
 			visibleChunks.get(i).onDraw(g);
 		}
 	}
@@ -146,36 +206,58 @@ public class World extends Screen {
 	}
 	
 	private void updateChunks() {
-		if (Chunk.WIDTH * Block.SIZE - offsetX < 0) {
+		if (Chunk.WIDTH * Block.SIZE - getOffsetX() < 0) {
+			// right
+			Chunk chunk = visibleChunks.get(visibleChunks.size() - 1);
+			int offset = chunk.getOffsetInRegion() + 1;
+			int region = chunk.getRegion() + ((offset == 512) ? 1 : 0);
+			// offset %= 512;
 			visibleChunks.remove(0);
-			visibleChunks.add(new Chunk(Chunk.HEIGHT
-					- visibleChunks.get(visibleChunks.size() - 1).getRightHeight(), Chunk.RIGHT,0,0));
+			visibleChunks.add(mainRegion.getChunk(offset));
 			setOffsetX(getOffsetX() - Block.SIZE * Chunk.WIDTH);
-		} else if (Chunk.WIDTH * Block.SIZE - offsetX > (Block.SIZE * Chunk.WIDTH)) {
+		} else if (Chunk.WIDTH * Block.SIZE - getOffsetX() > (Block.SIZE * Chunk.WIDTH)) {
+			// left
 			visibleChunks.remove(visibleChunks.size() - 1);
-			visibleChunks.add(0, new Chunk(Chunk.HEIGHT - visibleChunks.get(0).getLeftHeight(),
-					Chunk.LEFT,0,0));
+			Chunk chunk = visibleChunks.get(0);
+			int offset = chunk.getOffsetInRegion() - 1;
+			int region = chunk.getRegion() - ((offset == -1) ? 1 : 0);
+			offset %= 512;
+			offset = Math.abs(offset);
+			if (region != chunk.getRegion()) {
+				// visibleChunks.add(secondRegion.getChunk(offset));
+			} else
+				visibleChunks.add(0, mainRegion.getChunk(offset));
 			setOffsetX(getOffsetX() + Block.SIZE * Chunk.WIDTH);
 		}
 		
 	}
 	
-	private void loadWorldData(File f) {
-		// TODO ALL OF THIS
-	}
-	
-	private void saveWorldData() {
-		// TODO ALL OF THIS (Need file format decided first)
+	public void saveWorldData() {
+		new Thread(new Runnable() {
+			public void run() {
+				mainRegion.saveRegion();
+				File f = getSaveDataFile(saveName);
+				try (PrintWriter out = new PrintWriter(f)) {
+					f.createNewFile();
+					out.print(mainRegion.getRegionNum() + " "
+							+ visibleChunks.get(0).getOffsetInRegion() + " " + getOffsetX() + " "
+							+ getOffsetY());
+					out.flush();
+				} catch (IOException e) {
+					e.printStackTrace();
+					JOptionPane.showMessageDialog(null,
+							"The save file was unable to be written to. ", "Unable to save world!",
+							JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		}).start();
+		;
 	}
 	
 	@Override
 	public void drawOnPause(Graphics g) {
 		g.setColor(Color.red);
 		g.fillRoundRect(100, 100, 600, 400, 10, 10);
-	}
-	
-	public Block[][] getWorld() {
-		return world;
 	}
 	
 	public void setTitle(String a) {
@@ -233,6 +315,7 @@ public class World extends Screen {
 	}
 	
 	private void stopGame() {
+		this.saveWorldData();
 		this.stopTime();
 	}
 	
@@ -248,9 +331,7 @@ public class World extends Screen {
 				.getSelectedBlockType();
 		mouse.setMouseClicked(false);
 		if (x < 0 || y < 0 || x >= Chunk.WIDTH || y >= Chunk.HEIGHT) return;
-		for(Chunk c : visibleChunks){
-			if(c.collidesWithBlock(x, y, this.p.getBounds())) return;
-		}
+		
 		if (a != null) a.setBlock(b, x, y);
 	}
 	
@@ -327,8 +408,8 @@ public class World extends Screen {
 	
 	public boolean isPlayerCollided() {
 		Rectangle player = p.getBounds();
-		for(Chunk c : visibleChunks)
-			if(c.isCollided(player)) return true;
+		for (Chunk c : visibleChunks)
+			if (c.isCollided(player)) return true;
 		return false;
 	}
 	
@@ -366,7 +447,7 @@ public class World extends Screen {
 	}
 	
 	private void updateChunkCoords() {
-		for (int i = 0; i < visible; i++) {
+		for (int i = 0; i < visibleChunks.size(); i++) {
 			visibleChunks.get(i).setX(Block.SIZE * Chunk.WIDTH * (i) - (int) offsetX);
 			visibleChunks.get(i).setY(offsetY);
 		}
