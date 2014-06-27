@@ -95,10 +95,10 @@ public class Region implements Runnable {
 					for (Block b : col) {
 						out.print(b.getType().getBlockID() + " ");
 					}
-					out.println();
-					out.flush();
+					//out.println();
 				}
 			}
+			out.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

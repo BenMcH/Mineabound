@@ -20,7 +20,7 @@ public class Chunk extends GUIComponent {
 	private double x, y;
 	private final int region, offsetInRegion;
 	
-	public double getX() {
+	public double getChunkX() {
 		return x;
 	}
 	
@@ -28,7 +28,7 @@ public class Chunk extends GUIComponent {
 		this.x = x;
 	}
 	
-	public double getY() {
+	public double getChunkY() {
 		return y;
 	}
 	

@@ -7,6 +7,7 @@ import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -16,6 +17,7 @@ import java.util.Scanner;
 import javax.swing.JOptionPane;
 
 import com.tycoon177.engine.Game;
+import com.tycoon177.engine.gui.ButtonComponent;
 import com.tycoon177.engine.gui.Screen;
 import com.tycoon177.engine.utils.KeyboardListener;
 import com.tycoon177.engine.utils.MouseListener;
@@ -47,6 +49,7 @@ public class World extends Screen {
 	private File saveDir;
 	private int lastDirection = RIGHT;
 	private final String saveName;
+	private ButtonComponent pausedButtons[] = new ButtonComponent[3];
 	
 	public World(Game game, String saveName) {
 		super(game);
@@ -71,6 +74,13 @@ public class World extends Screen {
 			p.setHotbarPlace(i, BlockType.getBlockTypeFromId(i));
 		p.setHotbarPlace(4, BlockType.BEDROCK);
 		hotbar = new Hotbar(p);
+		for (int i = 0; i < pausedButtons.length; i++) {
+			pausedButtons[i] = new ButtonComponent(110, 220 + i * 60, 580, 50, "");			
+		}
+		pausedButtons[0].setText("Resume");
+		pausedButtons[1].setText("Save");
+		pausedButtons[2].setText("Save & Quit");
+		
 	}
 	
 	public void firstSetup(String saveName) {
@@ -136,7 +146,7 @@ public class World extends Screen {
 		return new File(getSaveDir() + File.separator + name);
 	}
 	
-	public static File getSaveDir(){
+	public static File getSaveDir() {
 		return new File(System.getenv("appdata") + File.separator + ".mineabound" + File.separator
 				+ "saves" + File.separator);
 	}
@@ -232,8 +242,8 @@ public class World extends Screen {
 		
 	}
 	
-	public void saveWorldData() {
-		new Thread(new Runnable() {
+	public Runnable saveWorldData() {
+		return new Runnable() {
 			public void run() {
 				mainRegion.saveRegion();
 				File f = getSaveDataFile(saveName);
@@ -250,14 +260,15 @@ public class World extends Screen {
 							JOptionPane.ERROR_MESSAGE);
 				}
 			}
-		}).start();
-		;
+		};
 	}
 	
 	@Override
 	public void drawOnPause(Graphics g) {
-		g.setColor(Color.red);
+		g.setColor(Color.LIGHT_GRAY);
 		g.fillRoundRect(100, 100, 600, 400, 10, 10);
+		for (ButtonComponent b : pausedButtons)
+			b.onDraw(g);
 	}
 	
 	public void setTitle(String a) {
@@ -283,9 +294,7 @@ public class World extends Screen {
 				setOffsetX(getOffsetX() + 1);
 			}
 			if (keys.isKeyPressed(KeyEvent.VK_SPACE)) jump();
-			if (mouse.isMouseClicked()) {
-				onMouseClick();
-			}
+			
 			if (keys.isKeyPressed(KeyEvent.VK_E)) {
 				inventory = true;
 				keys.setKeyPressed(KeyEvent.VK_E, false);
@@ -308,23 +317,66 @@ public class World extends Screen {
 				keys.setKeyPressed(KeyEvent.VK_ESCAPE, false);
 			}
 		}
-		if (keys.isKeyPressed(KeyEvent.VK_ALT)) if (keys.isKeyPressed(KeyEvent.VK_Q)) {
-			stopGame();
-			getGame().setScreen(new MainMenu(getGame()));
+		if (mouse.isMouseClicked()) {
+			onMouseClick();
 		}
 	}
 	
 	private void stopGame() {
-		this.saveWorldData();
+		Thread saveThread = new Thread(this.saveWorldData());
+		saveThread.start();
+		try {
+			saveThread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.stopTime();
 	}
 	
 	private void onMouseClick() {
+		if (!paused && !inventory)
+			inGameClick();
+		else if (!inventory) {
+			// paused
+			pausedBtnCheck();
+		} else if (!paused) {
+			// inventory
+		}
+	}
+	
+	private void pausedBtnCheck() {
+		Point p = mouse.getMouseLocation();
+		mouse.setMouseClicked(false);
+		for (ButtonComponent b : pausedButtons) {
+			if (b.getBounds().contains(p)) {
+				if(b.getText().equals("Resume")) setPaused(false);
+				
+				if(b.getText().contains("Quit")){
+					stopGame();
+					getGame().setScreen(new MainMenu(getGame()));
+					return;
+				}
+				if(b.getText().contains("Save")){
+					Thread t = new Thread(this.saveWorldData());
+					t.start();
+					try {
+						t.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					return;
+				}
+			}
+		}
+	}
+	
+	private void inGameClick() {
 		Point p = mouse.getMouseLocation();
 		Chunk a = getChunkFromCoordinatesOnScreen(p.x);
 		if (a == null) return;
-		int x = (int) Math.floor((p.x - a.getX()) / Block.SIZE);
-		int y = (int) Math.floor((p.y - a.getY()) / Block.SIZE);
+		int x = (int) Math.floor((p.x - a.getChunkX()) / Block.SIZE);
+		int y = (int) Math.floor((p.y - a.getChunkY()) / Block.SIZE);
 		boolean airSelected = this.p.getSelectedBlockType() == BlockType.AIR;
 		if (mouse.getMouseBtn() != MouseListener.LEFT && airSelected) return;
 		BlockType b = mouse.getMouseBtn() == MouseListener.LEFT ? BlockType.AIR : this.p
@@ -415,7 +467,7 @@ public class World extends Screen {
 	
 	public Chunk getChunkFromCoordinatesOnScreen(int x) {
 		for (Chunk a : visibleChunks) {
-			if (a.getX() < x && a.getX() + Chunk.WIDTH * Block.SIZE > x) return a;
+			if (a.getChunkX() < x && a.getChunkX() + Chunk.WIDTH * Block.SIZE > x) return a;
 		}
 		return null;
 	}
